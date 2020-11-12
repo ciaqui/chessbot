@@ -1,0 +1,16 @@
+{
+  "name": "discord-connect4",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Discord bot for playing Connect4",
+  "main": "./src/index.js",
+  "scripts": {
+    "start": "cd src && node index.js",
+    "test": "jest"
+  },
+  "license": "ISC",
+  "dependencies": {
+    "discord.js": "^12.4.1",
+    "jest": "^26.6.3"
+  }
+}
