@@ -1,5 +1,6 @@
 const Discord = require("discord.js");
 const Game = require("./game.js");
+const { Queen, Horse, Rook, Bishop } = require("./pieces.js");
 const client = new Discord.Client();
 
 
@@ -22,10 +23,10 @@ client.once('ready', () => {
 });
 
 client.on('message', message => {
+    message.content = message.content.trim();
     if (message.content.startsWith("!chess")) {
         opponent = message.content.substr(7);
 
-        const white = message.author;
         let black;
         try {
             black = getUserFromMention(opponent)
@@ -34,17 +35,59 @@ client.on('message', message => {
             return;
         }
 
-        const game = new Game(message.author, getUserFromMention(opponent));
+        // you can't play against the bot
+        if (black.bot) {
+            message.channel.send("You can't play against the bot, go find some friends instead :face_with_raised_eyebrow: ")
+            return;
+        }
+
+
+        const game = new Game(message.author, black, message);
 
         message.channel.send(game.render());
 
-        const filter = m => m.author.id === white.id || black.id;
-        const collector = message.channel.createMessageCollector(filter)
-        firstMessage = true;
+        // makes sure that only the person who's turn it is can enter a move
+        const filter = m => m.author.id === game.turn.id;
 
+        const collector = message.channel.createMessageCollector(filter);
         collector.on("collect", m => {
             // ignores any messages from the bot
             if (m.author.bot) return;
+
+            // checks if input is for a promotion
+            if (game.waitPromotion) {
+                m.content = m.content.trim()
+
+                const colour = game.turn.id === game.players.white.id ? "white" : "black";
+                switch (m.content) {
+                    case "q":
+                        game.board.layout[game.promotionPiece] = new Queen(colour);
+                        game.waitPromotion = false;
+                        m.channel.send(game.render());
+                        return;
+
+                    case "h":
+                        game.board.layout[game.promotionPiece] = new Horse(colour);
+                        game.waitPromotion = false;
+                        m.channel.send(game.render());
+                        return;
+
+                    case "r":
+                        game.board.layout[game.promotionPiece] = new Rook(colour);
+                        game.waitPromotion = false;
+                        m.channel.send(game.render());
+                        return;
+
+                    case "b":
+                        game.board.layout[game.promotionPiece] = new Bishop(colour);
+                        game.waitPromotion = false;
+                        m.channel.send(game.render());
+                        return;
+                    
+                    default:
+                        m.channel.send(`${m.content} is not a valid input, must be q, h, r, or b`);
+                }
+            }
 
             // checks for command to quit game
             if (m.content.startsWith("!quit")) {
@@ -54,25 +97,24 @@ client.on('message', message => {
                 return;
             }
 
-            // ignores move if it isn't your turn
-            // if (m.author.id !== game.turn) {
-            //     return;
-            // }
+            if (!game.waitPromotion) {
+                // moves the piece to destination
+                const pieceDestination = m.content.split(" ");
+                const piece = pieceDestination[0];
+                const destination = pieceDestination[1];
 
-            const pieceDestination = m.content.split(" ");
-            const piece = pieceDestination[0];
-            const destination = pieceDestination[1];
-
-            response = game.move(piece, destination);
-            if (response) {
-                m.channel.send(`${response} ${m.author.toString()}`);
-            } else {
-                // checks if either player has won the game, stops the game if they have
-                if (game.checkWin()) {
-                    collector.stop();
+                response = game.move(piece, destination);
+                if (response) {
+                    if (response === "Promotion") return;
+                    m.channel.send(`${response} ${m.author.toString()}`); 
+                } else {
+                    // checks if either player has won the game, stops the game if they have
+                    if (game.checkWin()) {
+                        collector.stop();
+                    }
+                    
+                    m.channel.send(game.render());
                 }
-                
-                m.channel.send(game.render());
             }
         });
     }

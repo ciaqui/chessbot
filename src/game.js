@@ -6,7 +6,7 @@ const numbers = [1, 2, 3, 4, 5, 6, 7, 8];
 
 
 class Game {
-    constructor(white, black) {
+    constructor(white, black, message) {
         this.board = new Board();
         this.players = {
             white, black
@@ -14,6 +14,9 @@ class Game {
         this.turn = this.players.white;
         this.winner = null;
         this.takenPieces = [];
+        this.message = message;
+        this.waitPromotion = false;
+        this.promotionPiece = null;
     }
 
     render = () => {
@@ -24,7 +27,8 @@ class Game {
 
         for (let i = 0; i < 8; i++) {
             let rowStr = "";
-            rowStr += `${i + 1}｜  `;
+            
+            rowStr += `*${i + 1}*｜  `;
 
             for (let j = 0; j < 8; j++) {
                 // gets the location of the chess piece (h2, b7, etc.)
@@ -35,10 +39,10 @@ class Game {
                 if (layoutArray[location] === null) {
                     rowStr += "     ";
                 } else {
-                   rowStr += `${layoutArray[location].getIcon()}`; 
+                   rowStr += layoutArray[location].icon; 
                 }
                 
-                // annoying text formatting because discord font is not monospaced
+                // annoying text formatting because discord font is not monospaced :(
                 if (j !== 8) {
                     if ((rowStr.match(/ /g) || []).length > 28) {
                         if (layoutArray[location]) {
@@ -61,7 +65,7 @@ class Game {
             renderArray.splice(0, 0, `\n${rowStr}`);
         }
 
-        renderArray.splice(999, 0, "\n  ｜＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿\n         a         b         c         d          e         f          g          h");
+        renderArray.splice(999, 0, "\n  ｜＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿\n         *a         b         c         d          e         f          g          h*");
 
         let turn;
         if (this.players.white.id == this.turn) {
@@ -71,9 +75,9 @@ class Game {
         }
 
         if (this.winner) {
-            renderArray.splice(0, 0, `${this.winner.toString()} is the winner!\n`);
+            renderArray.splice(0, 0, `${this.winner.toString()} is the winner! :partying_face: \n`);
         } else {
-           renderArray.splice(0, 0, `White = ${this.players.white.username}\nBlack = ${this.players.black.username}\n\n${turn}'s turn!\n`);
+           renderArray.splice(0, 0, `**White = ${this.players.white.username}\nBlack = ${this.players.black.username}**\n(Opposite if using light mode)\n\n__**${turn}'s turn!**__\n`);
         }
 
         // combines all rows in render array into one string
@@ -102,7 +106,7 @@ class Game {
         // makes sure that the destination does not already have a piece of the same colour
         if (this.board.layout[destination]) {
             if (this.board.layout[piece].colour === this.board.layout[destination].colour) {
-                return `There is already a piece on ${destination}`;
+                return `There is already a piece of your colour on ${destination}`;
             }            
         }
 
@@ -111,57 +115,55 @@ class Game {
             return `${this.board.layout[piece].name} cannot move to ${destination}`;
         }
 
-        // if (!this.checkObstacle(piece, destination)) return "There are pieces in the way";
+        // checks for any obstacles between piece and destination
+        const pieceClass = this.board.layout[piece];
+        const checkArray = pieceClass.checkObstacles(piece, destination);
+        // if there are areas on the board that need to checked
+        if (checkArray.length > 0) {
+            for (let i = 1; i < checkArray.length; i++) {
+                const checkPiece = this.board.layout[checkArray[i]];
+                // if there is a piece in the way
+                if (checkPiece) {
+                    return `There is a ${checkPiece.name} at ${checkArray[i]} blocking that move`;
+                }
+            }
+        }
+
+        // checks if piece if pawn and is attacking diagonally
+        if (pieceClass.name === "Pawn") {
+            if ((this.board.layout[destination]) && piece[0] === destination[0]) {
+                return "Pawns can only take pieces diagonally";
+            } else if (piece[0] !== destination[0]) {
+                if (!this.board.layout[destination]) {
+                    return `Pawn cannot move to ${destination}`;
+                }
+            }
+        }
 
         // moves the piece
         const movePiece = this.board.layout[piece];
         this.board.layout[piece] = null;
         this.board.layout[destination] = movePiece;
 
+        // checks if there is a promotion
+        if ((this.board.layout[destination].name === "Pawn") && (destination[1] == 8 || destination[1] == 1)) {
+            this.message.channel.send(this.render());
+            this.message.channel.send(`**Promotion!** What piece would you like ${destination} to promote to? ${this.message.author.toString()}\n**__q__** = Queen, **__h__** = Horse, **__r__** = Rook, **__b__** = Bishop`);
+            
+            this.waitPromotion = true;
+            this.promotionPiece = destination;
+
+            return "Promotion";
+        }
+
         // switches the turn
         this.turn = this.turn === this.players.white ? this.players.black : this.players.white;
     }
 
-    // true = no obstacles, false = obstacles
-    // checkObstacle = (piece, destination) => {
-    //     // horses disregard obstacles
-    //     if (this.board.layout[piece].name === "Horse") {
-    //         return true
-    //     }
-// 
-    //     // retrives the difference between piece and destination
-    //     const pieceX = letters.indexOf(piece[0]);
-    //     const pieceY = piece[1];
-    //     const destinationX = letters.indexOf(destination[0]);
-    //     const destinationY = destination[1];
-// 
-    //     const diffX = destinationX - pieceX;
-    //     const diffY = destinationY - pieceY;
-// 
-    //     // checks horizontally for pieces in the way
-    //     const checkY = piece[1];
-    //     for (let i = 0; i < diffX; i++) {
-    //         console.log(i);
-    //     }
-    //     
-    //     // checks vertically for pieces in th way
-    //     const checkX = piece[0];
-    //     for (let i = 0; i < diffY; i++) {
-    //         const checkY = piece[1] + i;
-    //         const check = checkX + checkY;
-// 
-    //         if (this.board.layout[check]) {
-    //             return false;
-    //         }
-    //     }
-// 
-    //     return true;
-    // }
-
     checkWin = () => {
         const layout = this.board.layout;
 
-        // gets location of white na black kings
+        // gets location of white and black kings
         let whiteKing = null;
         let blackKing = null;
         for (let i in layout) {
@@ -176,6 +178,7 @@ class Game {
             } catch (error) {}
         }
 
+        // if either white or black king cannot be found on board then someone has won
         if (!(whiteKing && blackKing)) {
             this.winner = !whiteKing ? this.players.white : this.players.black;
             return true;

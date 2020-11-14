@@ -28,7 +28,7 @@ class Board {
         for (const i in numbers) {
             for (const j in letters) {
                 const location = letters[j] + numbers[i];
-                const colour = numbers[i] > 3 ? "white" : "black"
+                const colour = i > 3 ? "black" : "white";
                 let piece;
                     
                 if (pawns.includes(location)) {

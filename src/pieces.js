@@ -1,14 +1,9 @@
 const letters =  ["a", "b", "c", "d", "e", "f", "g", "h"];
-const lettersDict = {1: "a", 2: "b", 3: "c", 4: "d", 5: "e", 6: "f", 7: "g", 8: "h"};
 
 
 class Piece {
     constructor(colour) {
         this.colour = colour;
-    }
-
-    getIcon = () => {
-        return this.icon;
     }
 
     getDiff = (piece, destination) => {
@@ -41,46 +36,135 @@ class Piece {
         return false;
     }
 
-    checkObstacle = (diff, piece) => {
+    // returns an array of squares that should be checked for obstacles in the way
+    checkObstacles = (piece, destination) => {
+        const straightLine = (piece, destination) => {
+            const movesVertically = diff.x === 0;
+                
+            // scans vertically
+            if (movesVertically) {
+                const movesPositively = diff.y > 0;
+
+                if (movesPositively) {
+                    for (let y = piece[1]; y < destination[1]; y++) {
+                        checkAreas.push(piece[0] + y);
+                    }
+                } else {
+                    for (let y = piece[1]; y > destination[1]; y--) {
+                        checkAreas.push(piece[0] + y);
+                    }
+                }
+            } else { // scans horizontally
+                const movesPositively = diff.x > 0;
+                
+                if (movesPositively) {
+                    for (let x = letters.indexOf(piece[0]); x < letters.indexOf(destination[0]); x++) {
+                        checkAreas.push(letters[x] + piece[1]);
+                    }
+                } else {
+                    for (let x = letters.indexOf(piece[0]); x > letters.indexOf(destination[0]); x--) {
+                        checkAreas.push(letters[x] + piece[1]);
+                    }
+                }
+
+            }
+        }
+
+        const diagonalLine = (piece, destination) => {
+            const posX = diff.x > 0 ? true : false;
+            const posY = diff.y > 0 ? true : false;
+            let checkDiffX;
+            let checkDiffY;
+
+
+            if (posX) {
+                // positive X
+                for (let x = letters.indexOf(piece[0]); x < letters.indexOf(destination[0]); x++) {
+                    checkDiffX = x - letters.indexOf(piece[0]);
+                    
+                    if (posY) {
+                        // positive X and positive Y
+                        for (let y = piece[1]; y < destination[1]; y++) {
+                            checkDiffY = y - piece[1];
+
+                            // if square is on a diagonal
+                            if (checkDiffX ** 2 === checkDiffY ** 2) {
+                                checkAreas.push(letters[x] + y);
+                            }
+                        }
+                    } else {
+                        // positive X and negative Y
+                        for (let y = piece[1]; y > destination[1]; y--) {
+                            checkDiffY = y - piece[1];
+
+                            // if square is on a diagonal
+                            if (checkDiffX ** 2 === checkDiffY ** 2) {
+                                checkAreas.push(letters[x] + y);
+                            }
+                        }
+                    }
+                }
+            } else {
+                // negative X
+                for (let x = letters.indexOf(piece[0]); x > letters.indexOf(destination[0]); x--) {
+                    checkDiffX = x - letters.indexOf(piece[0]);
+
+                    if (posY) {
+                        // negative X and positive Y
+                        for (let y = piece[1]; y < destination[1]; y++) {
+                            checkDiffY = y - piece[1];
+
+                            // if square is on a diagonal
+                            if (checkDiffX ** 2 === checkDiffY ** 2) {
+                                checkAreas.push(letters[x] + y);
+                            }
+                        }
+                    } else {
+                        // negative X and negative Y
+                        for (let y = piece[1]; y > destination[1]; y--) {
+                            checkDiffY = y - piece[1];
+
+                            // if square is on a diagonal
+                            if (checkDiffX ** 2 === checkDiffY ** 2) {
+                                checkAreas.push(letters[x] + y);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        const diff = this.getDiff(piece, destination);
         let checkAreas = [];
 
         switch (this.name) {
             case "Pawn":
-                const x = piece[0]
-
-                for (let y = 0; y < diff.y; y++) {
-                    checkAreas.push(lettersDict[x] + y);
-                }
+                straightLine(piece, destination);
 
                 break;
 
-            case "Horse":
-                const positiveX = diff.x >= 0 ? true : false;
-                const positiveY = diff.y >= 0 ? true : false;     
-
-                // scans horizontally
-                for (let x = 0; positiveX ? x < diff.x : x > diff.x; positiveX ? x++ : x--) {
-                    const checkX = piece[0] + lettersDict[x];
-                    checkAreas.push(checkX + diff.y);
-                }
-                
-                // scans vertically
-                for (let y = 0; positiveY ? y < diff.y : y > diff.x; positiveY ? y++ : y--) {
-                    const checkY = piece[1] + y
-                    checkAreas.push(lettersDict[diff.x], checkY);
-                }
-
             case "Rook":
-                movesVertically = diff.x === 0 ? false : true;
-                
-                // scans vertically
-                for (let i = 0; i < movesVertically ? diff.y : diff.x; diff.y > 0 ? i++ : i--) {
-                    if (movesVertically) {
-                        const checkY = piece[1] + i
-                        checkAreas.push(piece[0])
-                    }
+                straightLine(piece, destination);
+
+                break;
+            
+            case "Bishop":
+                diagonalLine(piece, destination);
+
+                break;
+            
+            case "Queen":
+                // if queen is moving diagonally
+                if (this.checkDiagonalLine(diff)) {
+                    diagonalLine(piece, destination);
+                } else { // if queen is moving on a straight line
+                    straightLine(piece, destination);
                 }
+
+                break;
         }
+
+        return checkAreas;
     }
 }
 
@@ -88,24 +172,22 @@ class Pawn extends Piece {
     constructor(colour) {
         super(colour);
         this.name = "Pawn";
-        this.icon = colour === "white" ? "♗" : "♟︎";
+        this.icon = colour === "white" ? "**♟︎**" : "♙";
         this.moves = 0;
     }
 
     verifyMove = (piece, destination) => {
         const diff = this.getDiff(piece, destination);
 
-        // pawn cannot move horizontally
-        if (diff.x !== 0) return false;
-
-        // pawn cannot move backwards
-        if (diff.y < 0) return false;
-
-        // pawn can not move up more than 2
-        if (diff.y > 2) return false;
+        // pawn cannot move backwards or more than 2
+        if (this.colour === "white") {
+            if (!(0 < diff.y <= 2)) return false;
+        } else {
+            if (!((diff.y >= -2) || (diff.y < 0))) return false;
+        }
 
         // pawn can only move up 2 if first move
-        if (diff.y = 2 && this.moves !== 0) return false;
+        if ((diff.y === 2 || diff.y === -2) && this.moves !== 0) return false;
 
         this.moves++
         return true;
@@ -116,7 +198,7 @@ class Horse extends Piece {
     constructor(colour) {
         super(colour);
         this.name = "Horse";
-        this.icon = colour === "white" ? "♘" : "♞";
+        this.icon = colour === "white" ? "**♞**" : "♘";
     }
 
     verifyMove = (piece, destination) => {
@@ -139,7 +221,7 @@ class Rook extends Piece {
     constructor(colour) {
         super(colour);
         this.name = "Rook";
-        this.icon = colour === "white" ? "♖" : "♜";
+        this.icon = colour === "white" ? "**♜**" : "♖";
     }
 
     verifyMove = (piece, destination) => {
@@ -154,7 +236,7 @@ class Bishop extends Piece {
     constructor(colour) {
         super(colour);
         this.name = "Bishop";
-        this.icon = colour === "white" ? "♗" : "♝";
+        this.icon = colour === "white" ? "**♝**" : "♗";
     }
 
     verifyMove = (piece, destination) => {
@@ -169,7 +251,7 @@ class Queen extends Piece {
     constructor(colour) {
         super(colour);
         this.name = "Queen";
-        this.icon = colour === "white" ? "♕" : "♛";
+        this.icon = colour === "white" ? "**♛**" : "♕";
     }
 
     verifyMove = (piece, destination) => {
@@ -189,7 +271,7 @@ class King extends Piece {
     constructor(colour) {
         super(colour);
         this.name = "King";
-        this.icon = colour === "white" ? "♔" : "♚";
+        this.icon = colour === "white" ? "**♚**" : "♔";
     }
 
     verifyMove = (piece, destination) => {
