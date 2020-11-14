@@ -51,13 +51,7 @@ class Board {
             }
         }
 
-        console.log(layout);
-
         return layout;
-    }
-
-    getLayout = () => {
-        return this.layout;
     }
 }
 

@@ -3,7 +3,7 @@ const Game = require("./game.js");
 const client = new Discord.Client();
 
 
-function getUserFromMention(mention) {
+const getUserFromMention = (mention) => {
 	if (!mention) return;
 
 	if (mention.startsWith('<@') && mention.endsWith('>')) {
@@ -22,53 +22,59 @@ client.once('ready', () => {
 });
 
 client.on('message', message => {
-    if (message.content.startsWith(";;c ")) {
-        command = message.content[4];
+    if (message.content.startsWith("!chess")) {
+        opponent = message.content.substr(7);
 
-        switch (command) {
-            case "g":
-                const white = {
-                    id: message.author.id,
-                    username: message.author.username
-                };
-                const black = {
-                    id: getUserFromMention(message.content.substr(6)).id,
-                    username: getUserFromMention(message.content.substr(6)).username
-                };
-
-                const game = new Game(white, black);
-                message.channel.send(game.render());
-
-
-                const filter = m => m.author.id === white.id || black.id;
-                const collector = message.channel.createMessageCollector(filter)
-                firstMessage = true;
-
-                collector.on("collect", m => {
-                    // ignores the board message
-                    if (m.content.startsWith("White is ")) {
-                        return;
-                    };
-
-                    // ignores move if it isn't your turn
-                    if (m.author.id !== game.getTurn()) {
-                        return;
-                    }
-
-                    piece = m.content.substr(0, 2);
-                    destination = m.content.substr(3, 2);
-
-                    response = game.move(piece, destination);
-                    if (response) {
-                        m.channel.send(`${response} ${m.author.toString()}`);
-                    }
-                })
-
-                break;
-
-            default:
-                message.channel.send("Command not recognised");
+        const white = message.author;
+        let black;
+        try {
+            black = getUserFromMention(opponent)
+        } catch (error) {
+            message.channel.send("You need to mention an opponent after the command (e.g. !chess @user)");
+            return;
         }
+
+        const game = new Game(message.author, getUserFromMention(opponent));
+
+        message.channel.send(game.render());
+
+        const filter = m => m.author.id === white.id || black.id;
+        const collector = message.channel.createMessageCollector(filter)
+        firstMessage = true;
+
+        collector.on("collect", m => {
+            // ignores any messages from the bot
+            if (m.author.bot) return;
+
+            // checks for command to quit game
+            if (m.content.startsWith("!quit")) {
+                collector.stop();
+                m.channel.send("Game has quit");
+                
+                return;
+            }
+
+            // ignores move if it isn't your turn
+            // if (m.author.id !== game.turn) {
+            //     return;
+            // }
+
+            const pieceDestination = m.content.split(" ");
+            const piece = pieceDestination[0];
+            const destination = pieceDestination[1];
+
+            response = game.move(piece, destination);
+            if (response) {
+                m.channel.send(`${response} ${m.author.toString()}`);
+            } else {
+                // checks if either player has won the game, stops the game if they have
+                if (game.checkWin()) {
+                    collector.stop();
+                }
+                
+                m.channel.send(game.render());
+            }
+        });
     }
 });
 
