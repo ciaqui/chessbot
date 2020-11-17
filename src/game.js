@@ -199,7 +199,11 @@ class Game {
                     if (
                         (layout[checkAreas[i]].name === "Pawn")
                         && (layout[checkAreas[i]].colour !== kingColour)
-                    ) this.check = true;
+                    ) {
+                        this.check = true;
+                        console.log("Pawn checking");
+                        return true;
+                    };
                 }
             }
         }
@@ -217,55 +221,56 @@ class Game {
                 if (layout[check]) {
                     if (layout[check].name === "Horse") {
                         this.check = true;
+                        console.log("Horse checking");
+                        return true;
                     }
                 }
             }
         }
 
-        const checkStraightLine = () => {
+        const checkStraightLines = () => {
             const checkSquare = (x, y) => {
-                const check = letters[x] + y;
-                
-                if (layout[check]) {
-                    if (layout[check].name === "King") {
-                        if (pieceFound) {
-                            this.check = true;
+                if (layout[x + y]) {
+                    if ((layout[x + y].name === "Rook") || (layout[x + y].name === "Queen")) {
+                        if (layout[x + y].colour !== kingColour) {
+                            preKingPiece = kingPiece ? false : true;
+                            postKingPiece = kingPiece ? true : false;
+
+                            if (postKingPiece && kingPiece) return true;
                         }
                     }
-
-                    if (layout[check].name === "Rook" && (layout[check].colour !== kingColour)) {
-                        pieceFound = true;
-                    } 
-                    else if (layout[check].name === "Queen" && (layout[check].colour !== kingColour)) {
-                        pieceFound = true;
+                    else if (layout[x + y].name === "King") {
+                        kingPiece = true;
+                        if (preKingPiece && kingPiece) return true;
                     }
                     else {
-                        pieceFound = false;
+                        preKingPiece = false;
+                        postKingPiece = false;
                     }
-                } 
+                    
+                }
             }
 
-            let pieceFound = false;
-            for (let i = 0; i < 7; i++) {
-                checkSquare(i, kingLocation[1]);
-            }
-
-            pieceFound = false;
-            for (let i = 7; i >= 0; i--) {
-                if (this.check) return true;
-                checkSquare(i, kingLocation[1]);
-            }
-
-            pieceFound = false;
-            for (let i = 0; i < 7; i++) {
-                if (this.check) return true;
-                checkSquare(letters.indexOf(kingLocation[0]), i);
+            let preKingPiece = false;
+            let kingPiece = false;
+            let postKingPiece = false;
+            for (let x = 0; x <= 7; x++) {
+                if (checkSquare(letters[x], parseInt(kingLocation[1]))) {
+                    this.check = true;
+                    console.log("Rook or queen checking");
+                    return true;
+                }
             }
             
-            pieceFound = true;
-            for (let i = 7; i >= 0; i--) {
-                if (this.check) return true;
-                checkSquare(letters.indexOf(kingLocation[0]), i);
+            preKingPiece = false;
+            kingPiece = false;
+            postKingPiece = false;
+            for (let y = 0; y <= 7; y++) {
+                if (checkSquare(kingLocation[0], y)) {
+                    this.check = true;
+                    console.log("Rook or queen checking");
+                    return true;
+                }
             }
         }
 
@@ -291,7 +296,7 @@ class Game {
 
         if (checkPawns()) return;
         if (checkHorses()) return;
-        if (checkStraightLine()) return;
+        if (checkStraightLines()) return;
     }
 
     checkWin = () => {
