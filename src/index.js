@@ -109,7 +109,7 @@ client.on('message', message => {
                     m.channel.send(`${response} ${m.author.toString()}`); 
                 } else {
                     // checks if either player has won the game, stops the game if they have
-                    if (game.checkWin()) {
+                    if (game.winner) {
                         collector.stop();
                     }
                     

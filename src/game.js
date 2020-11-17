@@ -13,10 +13,10 @@ class Game {
         };
         this.turn = this.players.white;
         this.winner = null;
-        this.takenPieces = [];
         this.message = message;
         this.waitPromotion = false;
         this.promotionPiece = null;
+        this.check = false;
     }
 
     render = () => {
@@ -43,6 +43,7 @@ class Game {
                 }
                 
                 // annoying text formatting because discord font is not monospaced :(
+                // update: did not realise that discord actually did have monospace font in with code markdown, too late now anyway
                 if (j !== 8) {
                     if ((rowStr.match(/ /g) || []).length > 28) {
                         if (layoutArray[location]) {
@@ -65,7 +66,7 @@ class Game {
             renderArray.splice(0, 0, `\n${rowStr}`);
         }
 
-        renderArray.splice(999, 0, "\n  ｜＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿\n         *a         b         c         d          e         f          g          h*");
+        renderArray.splice(100, 0, "\n  ｜＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿\n         *a         b         c         d          e         f          g          h*");
 
         let turn;
         if (this.players.white.id == this.turn) {
@@ -129,12 +130,21 @@ class Game {
             }
         }
 
-        // checks if piece if pawn and is attacking diagonally
+        // checks if piece is pawn and is attacking
         if (pieceClass.name === "Pawn") {
+            // if pawn is trying to attack in a straight line
             if ((this.board.layout[destination]) && piece[0] === destination[0]) {
                 return "Pawns can only take pieces diagonally";
-            } else if (piece[0] !== destination[0]) {
-                if (!this.board.layout[destination]) {
+            } else if (piece[0] !== destination[0]) { // if pawn is trying to attack diagonally
+                const diffX = letters.indexOf(destination[0]) - letters.indexOf(piece[0]);
+                console.log(diffX);
+
+                if ((diffX > 1) || (diffX < -1)) {
+                    return `Pawn cannot move to ${destination}`;
+                }
+
+                // if there is no piece to attack
+                if (!this.board.layout[destination]) { 
                     return `Pawn cannot move to ${destination}`;
                 }
             }
@@ -144,6 +154,10 @@ class Game {
         const movePiece = this.board.layout[piece];
         this.board.layout[piece] = null;
         this.board.layout[destination] = movePiece;
+
+        // checks if a player has won
+        this.checkWin();
+        if (this.winner) return;
 
         // checks if there is a promotion
         if ((this.board.layout[destination].name === "Pawn") && (destination[1] == 8 || destination[1] == 1)) {
@@ -158,6 +172,126 @@ class Game {
 
         // switches the turn
         this.turn = this.turn === this.players.white ? this.players.black : this.players.white;
+
+        // checks if the opponent's king is now in check
+        this.checkCheck();
+        console.log(this.check);
+    }
+
+    checkCheck = () => {
+        const checkPawns = () => {
+            let checkAreas;
+
+            if (kingColour === "white") {
+                checkAreas = [
+                    letters[letters.indexOf(kingLocation[0]) - 1] + (kingLocation[1] + 1),
+                    letters[letters.indexOf(kingLocation[0]) + 1] + (kingLocation[1] + 1)
+                ];
+            } else {
+                checkAreas = [
+                    letters[letters.indexOf(kingLocation[0]) - 1] + (kingLocation[1] - 1),
+                    letters[letters.indexOf(kingLocation[0]) + 1] + (kingLocation[1] - 1)
+                ];
+            }
+
+            for (let i in checkAreas) {
+                if (layout[checkAreas[i]]) {
+                    if (
+                        (layout[checkAreas[i]].name === "Pawn")
+                        && (layout[checkAreas[i]].colour !== kingColour)
+                    ) this.check = true;
+                }
+            }
+        }
+
+        const checkHorses = () => {
+            const checkAreas = [
+                [1, 2], [-1, 2], [2, 1], [2, -1], [1, -2], [-1, -2], [-2, 1], [-2, -1]
+            ];
+
+            for (let i in checkAreas) {
+                const checkX = letters[letters.indexOf(kingLocation[0]) + checkAreas[i][0]];
+                const checkY = checkAreas[i][1] + parseInt(kingLocation[1]);
+                const check = checkX + checkY;
+                
+                if (layout[check]) {
+                    if (layout[check].name === "Horse") {
+                        this.check = true;
+                    }
+                }
+            }
+        }
+
+        const checkStraightLine = () => {
+            const checkSquare = (x, y) => {
+                const check = letters[x] + y;
+                
+                if (layout[check]) {
+                    if (layout[check].name === "King") {
+                        if (pieceFound) {
+                            this.check = true;
+                        }
+                    }
+
+                    if (layout[check].name === "Rook" && (layout[check].colour !== kingColour)) {
+                        pieceFound = true;
+                    } 
+                    else if (layout[check].name === "Queen" && (layout[check].colour !== kingColour)) {
+                        pieceFound = true;
+                    }
+                    else {
+                        pieceFound = false;
+                    }
+                } 
+            }
+
+            let pieceFound = false;
+            for (let i = 0; i < 7; i++) {
+                checkSquare(i, kingLocation[1]);
+            }
+
+            pieceFound = false;
+            for (let i = 7; i >= 0; i--) {
+                if (this.check) return true;
+                checkSquare(i, kingLocation[1]);
+            }
+
+            pieceFound = false;
+            for (let i = 0; i < 7; i++) {
+                if (this.check) return true;
+                checkSquare(letters.indexOf(kingLocation[0]), i);
+            }
+            
+            pieceFound = true;
+            for (let i = 7; i >= 0; i--) {
+                if (this.check) return true;
+                checkSquare(letters.indexOf(kingLocation[0]), i);
+            }
+        }
+
+        this.check = false;
+        const layout = this.board.layout;
+        const kingColour = this.turn === this.players.white ? "black" : "white";
+
+        // gets location of king
+        let kingLocation;
+        for (let i in layout) {
+            try {
+                if (layout[i].name === "King") {
+                    if (layout[i].colour === kingColour) {
+                        kingLocation = i;
+
+                        break;
+                    }
+                }
+            } catch {}
+        }
+
+        console.log(kingColour, kingLocation);
+
+        if (checkPawns()) return;
+        if (checkHorses()) return;
+        if (checkStraightLine()) return;
     }
 
     checkWin = () => {

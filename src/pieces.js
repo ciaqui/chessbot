@@ -179,12 +179,15 @@ class Pawn extends Piece {
     verifyMove = (piece, destination) => {
         const diff = this.getDiff(piece, destination);
 
-        // pawn cannot move backwards or more than 2
+        // pawn cannot move backwards or more than 2 forwards
         if (this.colour === "white") {
             if (!(0 < diff.y <= 2)) return false;
         } else {
             if (!((diff.y >= -2) || (diff.y < 0))) return false;
         }
+
+        // pawns can never move more than 2
+        if (diff.y > 2 || diff.y < -2) return false;
 
         // pawn can only move up 2 if first move
         if ((diff.y === 2 || diff.y === -2) && this.moves !== 0) return false;
