@@ -37,7 +37,7 @@ client.on('message', message => {
 
         // you can't play against the bot
         if (black.bot) {
-            message.channel.send("You can't play against the bot, go find some friends instead :face_with_raised_eyebrow: ")
+            message.channel.send("You can't play against the bot, go find some friends instead :face_with_raised_eyebrow:")
             return;
         }
 
@@ -105,9 +105,10 @@ client.on('message', message => {
 
                 response = game.move(piece, destination);
                 if (response) {
-                    if (response === "Promotion") return;
+                    if (response === "Promotion" || response === "Check") return;
                     m.channel.send(`${response} ${m.author.toString()}`); 
-                } else {
+                } 
+                else {
                     // checks if either player has won the game, stops the game if they have
                     if (game.winner) {
                         collector.stop();

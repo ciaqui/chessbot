@@ -94,6 +94,9 @@ class Game {
         // checks if a piece exists
         if (!this.board.layout[piece]) return `There is no piece at ${piece}`;
 
+        // if in check then only the king can move
+        if ((this.check) && (!this.board.layout[piece].name === "King")) return "You can only move the King while in check";
+
         // checks that the destination is valid
         if (!this.board.layout[destination]) {
             if (this.board.layout[destination] !== null) {
@@ -175,7 +178,12 @@ class Game {
 
         // checks if the opponent's king is now in check
         this.checkCheck();
-        console.log(this.check);
+        if (this.check) {
+            this.message.channel.send(this.render());
+            this.message.channel.send(`**${this.turn === this.players.white ? "White" : "Black"}** is in check!`);
+
+            return "Check";
+        }
     }
 
     checkCheck = () => {
@@ -291,15 +299,11 @@ class Game {
                         ((kingLocation[1] - y) ** 2)
                     );
 
-                    console.log(letters[x] + y);
-
                     if (diagonal) {
-                        console.log(`Checking ${letters[x] + y}`);
                         if ( // bottom left and positive right quadrants (+x +y line)
                             ((x < letters.indexOf[kingLocation[0]]) && (y < parseInt(kingLocation[1]))) ||
                             ((x > letters.indexOf[kingLocation[0]]) && (y > parseInt(kingLocation[1])))
                         ) {
-                            console.log("pos");
                             if (checkLineSquare(letters[x], y, "Bishop", posPieceObj)) {
                                 this.check = true;
                                 return true;
@@ -316,7 +320,6 @@ class Game {
                             }
                         }
                         else { // top left and bottom right quadrants (+x -y line)
-                            console.log("neg");
                             if (checkLineSquare(letters[x], y, "Bishop", negPieceObj)) {
                                 this.check = true;
                                 return true;
