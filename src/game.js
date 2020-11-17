@@ -201,7 +201,6 @@ class Game {
                         && (layout[checkAreas[i]].colour !== kingColour)
                     ) {
                         this.check = true;
-                        console.log("Pawn checking");
                         return true;
                     };
                 }
@@ -221,55 +220,109 @@ class Game {
                 if (layout[check]) {
                     if (layout[check].name === "Horse") {
                         this.check = true;
-                        console.log("Horse checking");
                         return true;
                     }
                 }
             }
         }
 
-        const checkStraightLines = () => {
-            const checkSquare = (x, y) => {
-                if (layout[x + y]) {
-                    if ((layout[x + y].name === "Rook") || (layout[x + y].name === "Queen")) {
-                        if (layout[x + y].colour !== kingColour) {
-                            preKingPiece = kingPiece ? false : true;
-                            postKingPiece = kingPiece ? true : false;
+        const checkLineSquare = (x, y, piece, obj) => {
+            if (layout[x + y]) {
+                if ((layout[x + y].name === piece) || (layout[x + y].name === "Queen")) {
+                    if (layout[x + y].colour !== kingColour) {
+                        obj.preKingPiece = obj.kingPiece ? false : true;
+                        obj.postKingPiece = obj.kingPiece ? true : false;
 
-                            if (postKingPiece && kingPiece) return true;
-                        }
+                        if (obj.postKingPiece && obj.kingPiece) return true;
                     }
-                    else if (layout[x + y].name === "King") {
-                        kingPiece = true;
-                        if (preKingPiece && kingPiece) return true;
-                    }
-                    else {
-                        preKingPiece = false;
-                        postKingPiece = false;
-                    }
-                    
+                }
+                else if (layout[x + y].name === "King") {
+                    obj.kingPiece = true;
+                    if (obj.preKingPiece && obj.kingPiece) return true;
+                }
+                else {
+                    obj.preKingPiece = false;
+                    obj.postKingPiece = false;
                 }
             }
+        }
 
-            let preKingPiece = false;
-            let kingPiece = false;
-            let postKingPiece = false;
+        const checkStraightLines = () => {
+            let pieceObj = {
+                preKingPiece: false,
+                kingPiece: false,
+                postKingPiece: false
+            };
+
+            // scans horizontal line from king
             for (let x = 0; x <= 7; x++) {
-                if (checkSquare(letters[x], parseInt(kingLocation[1]))) {
+                if (checkLineSquare(letters[x], parseInt(kingLocation[1]), "Rook", pieceObj)) {
                     this.check = true;
-                    console.log("Rook or queen checking");
                     return true;
                 }
             }
             
-            preKingPiece = false;
-            kingPiece = false;
-            postKingPiece = false;
+            pieceObj.preKingPiece = false;
+            pieceObj.kingPiece = false;
+            pieceObj.postKingPiece = false;
+
+            // scans vertical line from king
             for (let y = 0; y <= 7; y++) {
-                if (checkSquare(kingLocation[0], y)) {
+                if (checkLineSquare(kingLocation[0], y, "Rook", pieceObj)) {
                     this.check = true;
-                    console.log("Rook or queen checking");
                     return true;
+                }
+            }
+        }
+
+        const checkDiagonalLines = () => {
+            let posPieceObj = {
+                preKingPiece: false,
+                kingPiece: false,
+                postKingPiece: false
+            };
+            let negPieceObj = posPieceObj;
+
+            // scans +x +y line
+            for (let x = 0; x <= 7; x++) {
+                for (let y = 1; y <= 8; y++) {
+                    const diagonal = (
+                        ((letters.indexOf(kingLocation[0]) - x) ** 2) === 
+                        ((kingLocation[1] - y) ** 2)
+                    );
+
+                    console.log(letters[x] + y);
+
+                    if (diagonal) {
+                        console.log(`Checking ${letters[x] + y}`);
+                        if ( // bottom left and positive right quadrants (+x +y line)
+                            ((x < letters.indexOf[kingLocation[0]]) && (y < parseInt(kingLocation[1]))) ||
+                            ((x > letters.indexOf[kingLocation[0]]) && (y > parseInt(kingLocation[1])))
+                        ) {
+                            console.log("pos");
+                            if (checkLineSquare(letters[x], y, "Bishop", posPieceObj)) {
+                                this.check = true;
+                                return true;
+                            }
+                        }
+                        else if (x === letters.indexOf(kingLocation[1])) {
+                            if (checkLineSquare(letters[x], y, "Bishop", posPieceObj)) {
+                                this.check = true;
+                                return true;
+                            }
+                            if (checkLineSquare(letters[x], y, "Bishop", negPieceObj)) {
+                                this.check = true;
+                                return true;
+                            }
+                        }
+                        else { // top left and bottom right quadrants (+x -y line)
+                            console.log("neg");
+                            if (checkLineSquare(letters[x], y, "Bishop", negPieceObj)) {
+                                this.check = true;
+                                return true;
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -292,11 +345,10 @@ class Game {
             } catch {}
         }
 
-        console.log(kingColour, kingLocation);
-
         if (checkPawns()) return;
         if (checkHorses()) return;
         if (checkStraightLines()) return;
+        if (checkDiagonalLines()) return;
     }
 
     checkWin = () => {
