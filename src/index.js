@@ -122,4 +122,4 @@ client.on('message', message => {
 });
 
 
-client.login('Nzc2NDk3NTE2OTA0MTg1ODY4.X61vqg.y1ks9k1Ky7jOOGUS2eJuwVTWM68');
+client.login('INSERT API KEY HERE');
